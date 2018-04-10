@@ -1,6 +1,7 @@
 
 import React, { Component } from 'react';
-import { StyleSheet, AppRegistry, Text, View, Button, TextInput, List, FlatList } from 'react-native';
+import { StyleSheet, AppRegistry, Text, View, Button, TextInput } from 'react-native';
+import { Col, Row, Grid } from "react-native-easy-grid";
 
 export default class App extends React.Component {
   constructor(props) {
@@ -86,57 +87,64 @@ export default class App extends React.Component {
   render() {
     return (
       <View style={styles.container}>
-        <View>
-          <View>
-          <TextInput
-                style={{height: 40}}
-                placeholder="Give project name"
-                onChangeText={(project) => this.setState({project})}
-              />
+        <Grid>
+          <Row style={styles.headrow}>
+            <Text style={styles.header}>TimeSheet</Text>
+          </Row>
+          <Row style={styles.row}>
+            <Col style={styles.col}>
               <Button
                 onPress={this.start}
                 title="Start"
                 color="green"
                 accessibilityLabel="Start"
               />
+            </Col>
+            <Col style={styles.col}>
               <Button
+                style={styles.button}
                 onPress={this.stop}
                 title="Stop"
                 color="red"
                 accessibilityLabel="Stop"
               />
-              
-            </View>
-            <View>    
-                <Text>
-                {this.state.currentdate} {this.state.currenttime} - {this.state.hours}:{this.state.minutes}:{this.state.seconds}  {this.state.project}
-              </Text>
-            </View>
-        </View>
+            </Col>
+            <Col>
+              <TextInput
+                style={styles.textinput}
+                placeholder="Give project name"
+                onChangeText={(project) => this.setState({project})}
+              />
+            </Col>
+          </Row>
+          <Row>
+            <Col style={styles.coldate}><Text style={styles.text}>{this.state.currentdate}</Text></Col>
+            <Col style={styles.coltime}><Text style={styles.text}>{this.state.currenttime}</Text></Col>
+            <Col style={styles.coltime}><Text style={styles.text}>{this.state.hours}:{this.state.minutes}.{this.state.seconds}</Text></Col>
+            <Col><TextInput
+                placeholder="Give project name"
+                onChangeText={(project) => this.setState({project})}
+              />
+            </Col>
+          </Row>
+        </Grid>  
       </View>
     );
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'column',
-    backgroundColor: '#fff',
-    marginTop: 20,
-  },
-  grid: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  column: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  row: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-});
+const styles = {
+  button: {borderRadius: 40, borderWidth: 3.5},
+  container: { flex: 1, padding: 16, paddingTop: 30, backgroundColor: '#fff' },
+  head: {  height: 40,  backgroundColor: '#f1f8ff'  },
+  wrapper: { flexDirection: 'row' },
+  title: { flex: 1, backgroundColor: '#f6f8fa' },
+  headrow: { height: 40 },
+  header: { fontSize: 19, fontWeight: 'bold'},
+  row: {  height: 60  },
+  col: {  width: 60 },
+  coldate: { width: 60},
+  coltime: { width: 40},
+  text: { textAlign: 'left' },
+  textinput: {height: 40, paddingLeft: 10, marginLeft: 10 }
+};
