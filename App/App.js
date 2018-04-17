@@ -1,6 +1,6 @@
 
 import React, { Component } from 'react';
-import { StyleSheet, AppRegistry, Text, View, Button, TextInput } from 'react-native';
+import { StyleSheet, AppRegistry, Text, View, Button, TextInput, ScrollView } from 'react-native';
 import { Col, Row, Grid } from "react-native-easy-grid";
 
 class ProjectRow extends React.Component{
@@ -24,13 +24,15 @@ class ProjectTable extends React.Component {
     const rows = [];
     this.props.projects.forEach((project) => {
       rows.push(
-        <ProjectRow id={project.id} starttime={project.starttime} duration={project.duration} name={project.name} notes={project.notes} />
+        <ProjectRow key={project.id} starttime={project.starttime} duration={project.duration} name={project.name} notes={project.notes} />
       );
     });
     return (
-      <Row style={styles.row}>
+      <Row>
         <Col>
-          <Row><Col><Text>Start</Text></Col><Col><Text>Duration</Text></Col><Col><Text>Name</Text></Col></Row>
+          <Row style={styles.project_headrow}>
+            <Col><Text style={styles.project_header}>Start</Text></Col><Col><Text style={styles.project_header}>Duration</Text></Col><Col><Text style={styles.project_header}>Name</Text></Col>
+          </Row>
           {rows}
         </Col>
       </Row>
@@ -42,60 +44,90 @@ export default class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-			time: 1,
+			time: 0,
 			intervalId: false,
-			duration: '',
       projectname: '',
       currenttime: this.formattedTime(),
       currentdate: this.formattedDate(),
       starttime: false,
-      projects: [{
-          id: 1,
-          name: 'Test1',
-          duration: 'duration',
-          starttime: 'starttime',
-          notes: 'notes',
-        },{
-          id: 2,
-          name: 'Test2',
-          duration: 'duration',
-          starttime: 'starttime',
-          notes: 'notes',
-        },{
-          id: 3,
-          name: 'Test3',
-          duration: 'duration',
-          starttime: 'starttime',
-          notes: 'notes',
-        }]
+      projects: []
 	  }
-	  this.start = this.start.bind(this)
-    this.stop = this.stop.bind(this)
+	  this.start = this.start.bind(this);
+    this.stop = this.stop.bind(this);
 	}
 
+  /**
+   * Starts timer
+   */
 	start() {
     if( !this.state.intervalId ){
 		var intervalId = setInterval(() => {
 		  this.setState({ 
+        projectid: this.state.projectid + 1,
         starttime: new Date(),
         intervalId: intervalId, 
-        time: this.state.time + 1,
-        currenttime: this.formattedTime(),
-        currentdate: this.formattedDate()})
+        time: this.state.time + 1,})
         this.tick();
         }, 1000)
 	  }    
 	}
 
+
+  /**
+   * Stops timer and saves project to database
+   */
+	stop() {
+	  if( this.state.intervalId ){
+      let starttime = this.formattedDate(this.state.starttime)+' '+this.formattedTime(this.state.starttime);
+      let endtime = new Date();
+      const project = {
+        id: this.state.projectid,
+        name: this.state.projectname,
+        duration: this.formattedDuration(this.state.time),
+        starttime: starttime,
+        notes: 'notes',
+      }
+      
+      this.setState({
+        projects: [...this.state.projects, project]
+      })
+
+      // Save project data to DB
+      this.saveToDb( project );
+      
+      clearInterval(this.state.intervalId);
+      this.setState({ 
+        time: 0,
+        intervalId: false })
+      }
+	}
+
+	tick () {
+    let time = this.state.time;
+      if( time > 0){
+        this.setState({
+          time: time,
+        })
+      }      
+	}
+
+  /**
+   * @param Date, now as default
+   * @return Date in format: dd.MM.YYYY
+   */
   formattedDate( date = new Date()){
-    var formattedDate = date.getDate()+'.'+(date.getMonth()+1) +'.'+date.getFullYear()
-    return formattedDate
+    let formattedDate = date.getDate()+'.'+(date.getMonth()+1) +'.'+date.getFullYear();
+    return formattedDate;
   }
 
+  /**
+   * @param Date, now as default
+   * @return Time in format: hh.mm
+   */
   formattedTime(date = new Date()){
-    var minutes = (date.getMinutes() < 10) ? '0'+date.getMinutes():date.getMinutes()
-    var hours = (date.getHours() < 10) ? '0'+date.getHours():date.getHours()
-    var formattedTime = hours+':'+minutes
+    let minutes = (date.getMinutes() < 10) ? '0'+date.getMinutes():date.getMinutes();
+    let hours = (date.getHours() < 10) ? '0'+date.getHours():date.getHours();
+    let formattedTime = hours+':'+minutes;
     return formattedTime;
   }
 
@@ -104,55 +136,14 @@ export default class App extends React.Component {
    * @return formatted duration hh:mm as string 
    */
   formattedDuration( time ){
-    console.log(time)
-    var seconds = Math.floor(time%60); 
-    var minutes = Math.floor((time/60)%60);
-    var hours = Math.floor(time/(60*60)%24);
-    let formattedDuration = hours.toString() + ':' + minutes.toString() + '.'+seconds.toString()
-    return formattedDuration
+    let seconds = Math.floor(time%60); 
+    let minutes = Math.floor((time/60)%60);
+    let hours = Math.floor(time/(60*60)%24);
+    minutes = (minutes < 10) ? '0' + minutes:minutes;
+    hours = (hours < 10) ? '0' + hours:hours;
+    let formattedDuration = hours.toString() + ':' + minutes.toString() + '.'+seconds.toString();
+    return formattedDuration;
   }
-
-	stop() {
-	  if( this.state.intervalId ){
-      let starttime = this.formattedTime(this.state.starttime);
-      let endtime = new Date();
-      let duration = endtime - this.state.starttime;
-
-      const project = {
-        name: this.state.projectname,
-        duration: this.duration,
-        starttime: starttime,
-        notes: 'notes',
-      }
-
-      this.setState({
-        projects: [...this.state.projects, project]
-      })
-
-      // Save project data to DB
-      clearInterval(this.state.intervalId);
-      this.setState({ 
-        time: 0, 
-        duration: 0,
-        intervalId: false })
-      }
-	}
-
-	tick () {
-      var time = this.state.time;
-      if( time > 0){
-        duration = time// this.formattedDuration(time)
-        /*
-        var seconds = Math.floor(time%60); 
-        var minutes = Math.floor((time/60)%60);
-        var hours = Math.floor(time/(60*60)%24);
-        */
-        this.setState({
-          time: time,
-          duration: duration
-        })
-      }      
-	}
 
   saveToDb(project){
     /*
@@ -214,10 +205,12 @@ export default class App extends React.Component {
           </Row>
           <Row style={styles.row}>
             <Col><Text style={styles.text}>{this.state.currentdate} {this.state.currenttime}</Text></Col>
-            <Col><Text style={styles.text}>{this.formattedDuration(this.state.duration)}</Text></Col> 
+            <Col><Text style={styles.text}>{this.formattedDuration(this.state.time)}</Text></Col> 
             <Col><Text style={styles.text}>{this.state.projectname}</Text></Col>        
           </Row>
-          <ProjectTable projects={this.state.projects}/>
+          <ScrollView>
+            <ProjectTable projects={this.state.projects}/>
+          </ScrollView>
         </Grid>  
       </View>
     );
@@ -231,7 +224,9 @@ const styles = {
   wrapper: { flexDirection: 'row' },
   title: { flex: 1, backgroundColor: '#f6f8fa' },
   headrow: { height: 40 },
+  project_headrow: { height: 30 },
   header: { fontSize: 19, fontWeight: 'bold'},
+  project_header: { fontSize: 16, fontWeight: 'bold'},
   row: {  height: 60  },
   col: {  width: 60 },
   coldate: { width: 60},
