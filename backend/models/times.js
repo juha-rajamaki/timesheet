@@ -5,10 +5,11 @@ var mongoose = restful.mongoose;
 // Schema
 var timesSchema = new mongoose.Schema({
 
+    userid: String,
     project: String,
     starttime: Date,
     endtime: Date,
-    Notes: String
+    notes: String
 });
 
 
