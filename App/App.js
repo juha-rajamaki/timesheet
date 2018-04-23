@@ -2,43 +2,7 @@
 import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, View, Button, TextInput, ScrollView } from 'react-native';
 import { Col, Row, Grid } from "react-native-easy-grid";
-
-class ProjectRow extends React.Component{
-  constructor(props){
-    super(props)
-    this.state = {}
-  }
-
-  render() {
-    return (
-      <Row>
-        <Col><Text>{this.props.starttime}</Text></Col>
-        <Col><Text>{this.props.duration}</Text></Col>
-        <Col><Text>{this.props.name}</Text></Col>
-      </Row>
-  )}
-}
-
-class ProjectTable extends React.Component {
-  render() {
-    const rows = [];
-    this.props.projects.forEach((project) => {
-      rows.push(
-        <ProjectRow key={project.id} starttime={project.starttime} duration={project.duration} name={project.name} notes={project.notes} />
-      );
-    });
-    return (
-      <Row>
-        <Col>
-          <Row style={styles.project_headrow}>
-            <Col><Text style={styles.project_header}>Start</Text></Col><Col><Text style={styles.project_header}>Duration</Text></Col><Col><Text style={styles.project_header}>Name</Text></Col>
-          </Row>
-          {rows}
-        </Col>
-      </Row>
-    );
-  }
-}
+import {TimesheetRow, TimesheetTable, Formatted, Timer, Db} from './Utils';
 
 export default class App extends React.Component {
   constructor(props) {
@@ -47,22 +11,29 @@ export default class App extends React.Component {
 			time: 0,
 			intervalId: false,
       projectname: '',
-      currenttime: this.formattedTime(),
-      currentdate: this.formattedDate(),
+      currenttime: Formatted.formattedTime(),
+      currentdate: Formatted.formattedDate(),
       starttime: false,
-      projects: []
+      projectid: 1,
+      notes: false,
+      timesheets: []
 	  }
 	  this.start = this.start.bind(this);
     this.stop = this.stop.bind(this);
+    let options = {};
+    Db.fetchTimesheetFromDb(options);
+    Db.fetchProjectsFromDb();
+    Db.fetchUsersFromDb();
 	}
 
-  /**
+   /**
    * Starts timer
    */
 	start() {
     if( !this.state.intervalId ){
 		var intervalId = setInterval(() => {
 		  this.setState({ 
+        currenttime: Formatted.formattedTime(),
         projectid: this.state.projectid + 1,
         starttime: new Date(),
         intervalId: intervalId, 
@@ -78,25 +49,33 @@ export default class App extends React.Component {
    */
 	stop() {
 	  if( this.state.intervalId ){
-      let starttime = this.formattedDate(this.state.starttime)+' '+this.formattedTime(this.state.starttime);
+      let starttime = Formatted.formattedDate(this.state.starttime)+' '+Formatted.formattedTime(this.state.starttime);
       let endtime = new Date();
-      const project = {
-        id: this.state.projectid,
-        name: this.state.projectname,
-        duration: this.formattedDuration(this.state.time),
-        starttime: starttime,
-        notes: 'notes',
+      const timesheet = {
+        project: this.state.projectname,
+        notes: this.state.notes,
+        endtime: new Date(),
+        starttime: this.state.starttime
       }
-      
-      this.setState({
-        projects: [...this.state.projects, project]
-      })
+      const timesheetRow = {
+        id: this.state.projectid,
+        project: this.state.projectname,
+        notes: this.state.notes,
+        duration: Formatted.formattedDuration(this.state.time),
+        starttime: Formatted.formattedTime(this.state.starttime)
+      }
 
       // Save project data to DB
-      this.saveToDb( project );
-      
+      Db.saveTimesheetToDb( timesheet );
+
+      this.setState({
+        timesheets: [...this.state.timesheets, timesheetRow]
+      })
+
       clearInterval(this.state.intervalId);
       this.setState({ 
+        projectname:'',
+        notes:'',
         time: 0,
         intervalId: false })
       }
@@ -110,68 +89,8 @@ export default class App extends React.Component {
         })
       }      
 	}
-
-  /**
-   * @param Date, now as default
-   * @return Date in format: dd.MM.YYYY
-   */
-  formattedDate( date = new Date()){
-    let formattedDate = date.getDate()+'.'+(date.getMonth()+1) +'.'+date.getFullYear();
-    return formattedDate;
-  }
-
-  /**
-   * @param Date, now as default
-   * @return Time in format: hh.mm
-   */
-  formattedTime(date = new Date()){
-    let minutes = (date.getMinutes() < 10) ? '0'+date.getMinutes():date.getMinutes();
-    let hours = (date.getHours() < 10) ? '0'+date.getHours():date.getHours();
-    let formattedTime = hours+':'+minutes;
-    return formattedTime;
-  }
-
-  /**
-   *  Duration in milliseconds
-   * @return formatted duration hh:mm as string 
-   */
-  formattedDuration( time ){
-    let seconds = Math.floor(time%60); 
-    let minutes = Math.floor((time/60)%60);
-    let hours = Math.floor(time/(60*60)%24);
-    minutes = (minutes < 10) ? '0' + minutes:minutes;
-    hours = (hours < 10) ? '0' + hours:hours;
-    let formattedDuration = hours.toString() + ':' + minutes.toString() + '.'+seconds.toString();
-    return formattedDuration;
-  }
-
-  saveToDb(project){
-    /*
-    app.get('http://localhost:3000/api/timesheet', (request, response) => {
-      Times
-        .find({})
-        .then(times => {
-          response.json()
-        })
-    })
-
-    
-    {
-      "project": "worklogger",
-      "starttime": "Mon Feb 12 2018 11:33:00 GMT+0100 (CET)",
-      "endtime": "Mon Feb 12 2018 12:43:00 GMT+0100 (CET)",
-      "Notes": "third Entry"
-    }*/
-
-//    project: String,
-//    starttime: Date,
-//    endtime: Date,
-//    Notes: String
-  }
- 
   render() {
-    
-    return (
+     return (
       <View style={styles.container}>
         <Grid>
           <Row style={styles.headrow}>
@@ -202,20 +121,29 @@ export default class App extends React.Component {
                 onChangeText={(projectname) => this.setState({projectname})}
               />
             </Col>
+            <Col>
+              <TextInput
+                style={styles.textinput}
+                placeholder="Give notes"
+                onChangeText={(notes) => this.setState({notes})}
+              />
+            </Col>
           </Row>
           <Row style={styles.row}>
             <Col><Text style={styles.text}>{this.state.currentdate} {this.state.currenttime}</Text></Col>
-            <Col><Text style={styles.text}>{this.formattedDuration(this.state.time)}</Text></Col> 
-            <Col><Text style={styles.text}>{this.state.projectname}</Text></Col>        
+            <Col><Text style={styles.text}>{Formatted.formattedDuration(this.state.time)}</Text></Col> 
+            <Col><Text style={styles.text}>{this.state.projectname}</Text></Col>
+            <Col><Text style={styles.text}>{this.state.notes}</Text></Col>              
           </Row>
           <ScrollView>
-            <ProjectTable projects={this.state.projects}/>
+            <TimesheetTable timesheets={this.state.timesheets}/>
           </ScrollView>
         </Grid>  
       </View>
     );
   }
 }
+
 const styles = {
   button: {borderRadius: 40, borderWidth: 3.5},
   small_button: {borderRadius: 40, borderWidth: 3.5, width: 30,height: 30 },
