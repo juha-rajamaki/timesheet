@@ -1,16 +1,15 @@
 import React, { Component } from 'react';
-import { Text } from 'react-native';
+import { Text, ActivityIndicator, ErrorScreen } from 'react-native';
 import { Col, Row, Grid } from "react-native-easy-grid";
 
 
 export class Db{
 
-  static saveUserToDb(user){
+  saveUserToDb(user){
     console.log( 'saveUserToDb', user );
   }
   
-  static fetchUsersFromDb(id){
-    console.log( 'fetchUsessssrsFromDb', id );
+  fetchUsersFromDb(id){
     let api = 'https://dino-timesheet-testi.herokuapp.com/api/user/';
     fetch(api, {
       method: 'GET',
@@ -27,11 +26,11 @@ export class Db{
     });
   }
 
-  static saveProjectToDb(project){
+  saveProjectToDb(project){
     console.log( 'saveProjectToDb', user );
   }
   
-  static fetchProjectsFromDb(id = false){
+  fetchProjectsFromDb(id = false){
     console.log( 'fetchProjectsFromDb', id );
   }
 
@@ -54,28 +53,6 @@ export class Db{
     .then(function(json) {
       console.log( 'saveTimesheetToDb json');
       console.log(json);
-    });
-  }
- 
-  /**
-   * Default fetch all timesheet items
-   * @param array options 
-   */
-  static fetchTimesheetFromDb(options=[]){
-    fetch('https://dino-timesheet-testi.herokuapp.com/api/timesheet/', {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-    }).then(function(response) {
-      return response.json().then(function(data){
-        let rows = [];
-        rows = data.map(function(timesheet) {
-          rows.push( {starttime: timesheet.starttime, project: timesheet.project});
-        });
-        console.log(rows);
-      });
     });
   }
 }
@@ -136,18 +113,43 @@ export class TimesheetRow extends React.Component{
   }
   
   export class TimesheetTable extends React.Component {
+    constructor(){
+      super()
+      this.state = {
+        data: null,
+        error: null,
+        loading: true
+      }
+    }
+
+    componentDidMount(){
+      fetch('https://dino-timesheet-testi.herokuapp.com/api/timesheet/', {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }).then(response => response.json())
+      .then(
+          data => this.setState({ loading: false, data }),
+          error => this.setState({ loading: false, error })
+      );
+    }
+    
     render() {
+      if( this.state.loading ){
+        return <ActivityIndicator size="large" color="#0000ff" />
+      }
+      if (this.state.error) {
+        return <ErrorScreen error={this.state.error} />;
+      }
       const rows = [];
-      /*
-      let result = Db.fetchTimesheetFromDb();
-      result.then((timesheets) => {
-        timesheets.map((timesheet)=> {
-          console.log(timesheet);
-          rows.push(
-            <TimesheetRow key={timesheet._id} starttime={timesheet.starttime} duration={timesheet.endtime} project={timesheet.project} notes={timesheet.notes} />
-          );
-        })
-      });*/
+      this.state.data.map((row) => {
+        rows.push(
+          <TimesheetRow key={row._id} starttime={row.starttime} duration={row.endtime} project={row.project} notes={row.notes} />
+        );
+      });
+      
       return (
         <Row>
           <Col>

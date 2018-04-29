@@ -16,14 +16,13 @@ export default class App extends React.Component {
       starttime: false,
       projectid: 1,
       notes: false,
+      refresh: false,
       timesheets: []
-	  }
+    }
+    
 	  this.start = this.start.bind(this);
     this.stop = this.stop.bind(this);
     let options = {};
-    Db.fetchTimesheetFromDb(options);
-    Db.fetchProjectsFromDb();
-    Db.fetchUsersFromDb();
 	}
 
    /**
@@ -69,6 +68,7 @@ export default class App extends React.Component {
       Db.saveTimesheetToDb( timesheet );
 
       this.setState({
+        refresh: true,
         timesheets: [...this.state.timesheets, timesheetRow]
       })
 
