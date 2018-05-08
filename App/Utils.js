@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import { Text, ActivityIndicator, ErrorScreen } from 'react-native';
+import { Text, ActivityIndicator, ErrorScreen, Button } from 'react-native';
 import { Col, Row, Grid } from "react-native-easy-grid";
-
+import { Icon } from 'react-native-elements'
 
 export class Db{
 
@@ -34,6 +34,17 @@ export class Db{
     console.log( 'fetchProjectsFromDb', id );
   }
 
+  static deleteTimesheetfromDb(id){
+    let api = 'https://dino-timesheet-testi.herokuapp.com/api/timesheet/'+id;
+    fetch( api, {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+    });
+  }
+
   static saveTimesheetToDb(data){
     fetch('https://dino-timesheet-testi.herokuapp.com/api/timesheet/', {
       method: 'POST',
@@ -51,8 +62,7 @@ export class Db{
       return response.json();
     })
     .then(function(json) {
-      console.log( 'saveTimesheetToDb json');
-      console.log(json);
+      console.log( 'saveTimesheetToDb json')
     });
   }
 }
@@ -84,12 +94,16 @@ export class Formatted{
      * @return formatted duration hh:mm as string 
      */
     static formattedDuration( time ){
-      let seconds = Math.floor(time%60); 
-      let minutes = Math.floor((time/60)%60);
-      let hours = Math.floor(time/(60*60)%24);
-      minutes = (minutes < 10) ? '0' + minutes:minutes;
-      hours = (hours < 10) ? '0' + hours:hours;
-      let formattedDuration = hours.toString() + ':' + minutes.toString() + '.'+seconds.toString();
+      let formattedDuration = null;
+      if( time > 0 ){
+        let seconds = Math.floor(time%60); 
+        let minutes = Math.floor((time/60)%60);
+        let hours = Math.floor(time/(60*60)%24);
+        minutes = (minutes < 10) ? '0' + minutes:minutes;
+        hours = (hours < 10) ? '0' + hours:hours;
+        formattedDuration = hours.toString() + ':' + minutes.toString() + '.'+seconds.toString();
+      }
+      
       return formattedDuration;
     }
 }
@@ -98,12 +112,30 @@ export class Formatted{
 export class TimesheetRow extends React.Component{
     constructor(props){
       super(props)
-      this.state = {}
+      this.state = {
+        loading: true,
+        refresh: null,
+      }
+      
+      this.delete = this.delete.bind(this);
     }
-  
+
+    delete(){
+      Db.deleteTimesheetfromDb(this.props.id);
+    }
+
+    
     render() {
       return (
         <Row>
+          <Col style={styles.delbutton}>
+            <Icon
+              name='delete'
+              size={25}
+              color='black'
+              onPress={this.delete}
+            />
+          </Col>
           <Col><Text>{this.props.starttime}</Text></Col>
           <Col><Text>{this.props.duration}</Text></Col>
           <Col><Text>{this.props.project}</Text></Col>
@@ -113,12 +145,13 @@ export class TimesheetRow extends React.Component{
   }
   
   export class TimesheetTable extends React.Component {
-    constructor(){
-      super()
+    constructor(props){
+      super(props)
       this.state = {
         data: null,
         error: null,
-        loading: true
+        loading: true,
+        refresh: null,
       }
     }
 
@@ -145,8 +178,14 @@ export class TimesheetRow extends React.Component{
       }
       const rows = [];
       this.state.data.map((row) => {
+        let starttime = new Date(row.starttime);
+        let endtime = new Date(row.endtime);
+        let startdatetime = Formatted.formattedDate(starttime)+' '+Formatted.formattedTime(starttime);
+        let timediff = endtime - starttime;
+        let duration = Formatted.formattedDuration(timediff);
+        let key = row._id;
         rows.push(
-          <TimesheetRow key={row._id} starttime={row.starttime} duration={row.endtime} project={row.project} notes={row.notes} />
+          <TimesheetRow key={key} id={key} starttime={startdatetime} duration={duration} project={row.project} notes={row.notes} />
         );
       });
       
@@ -154,6 +193,8 @@ export class TimesheetRow extends React.Component{
         <Row>
           <Col>
             <Row style={styles.timesheet_headrow}>
+              <Col style={styles.delbutton}>
+              </Col>
               <Col><Text style={styles.timesheet_headrow}>Start</Text></Col>
               <Col><Text style={styles.timesheet_headrow}>Duration</Text></Col>
               <Col><Text style={styles.timesheet_headrow}>Project</Text></Col>
@@ -167,8 +208,8 @@ export class TimesheetRow extends React.Component{
   }
 
   const styles = {
-    button: {borderRadius: 40, borderWidth: 3.5},
-    small_button: {borderRadius: 40, borderWidth: 3.5, width: 30,height: 30 },
+    
+    delbutton: {marginBottom: 4, marginRight: 4, width:25},
     container: { flex: 1, padding: 16, paddingTop: 30, backgroundColor: '#fff' },
     head: {  height: 40,  backgroundColor: '#f1f8ff'  },
     wrapper: { flexDirection: 'row' },

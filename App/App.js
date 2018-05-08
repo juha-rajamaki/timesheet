@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import { StyleSheet, AppRegistry, Text, View, Button, TextInput, ScrollView } from 'react-native';
 import { Col, Row, Grid } from "react-native-easy-grid";
 import {TimesheetRow, TimesheetTable, Formatted, Timer, Db} from './Utils';
+import { Icon } from 'react-native-elements'
 
 export default class App extends React.Component {
   constructor(props) {
@@ -16,12 +17,12 @@ export default class App extends React.Component {
       starttime: false,
       projectid: 1,
       notes: false,
-      refresh: false,
-      timesheets: []
+      refreshing: false,
     }
     
 	  this.start = this.start.bind(this);
     this.stop = this.stop.bind(this);
+    this.refresh = this.refresh.bind(this);
     let options = {};
 	}
 
@@ -56,30 +57,23 @@ export default class App extends React.Component {
         endtime: new Date(),
         starttime: this.state.starttime
       }
-      const timesheetRow = {
-        id: this.state.projectid,
-        project: this.state.projectname,
-        notes: this.state.notes,
-        duration: Formatted.formattedDuration(this.state.time),
-        starttime: Formatted.formattedTime(this.state.starttime)
-      }
 
       // Save project data to DB
       Db.saveTimesheetToDb( timesheet );
 
-      this.setState({
-        refresh: true,
-        timesheets: [...this.state.timesheets, timesheetRow]
-      })
-
       clearInterval(this.state.intervalId);
-      this.setState({ 
+      this.setState({   
         projectname:'',
         notes:'',
         time: 0,
-        intervalId: false })
+        intervalId: false,
+        refreshing: true })
       }
 	}
+
+  refresh() {
+    this.forceUpdate();
+  }
 
 	tick () {
     let time = this.state.time;
@@ -88,7 +82,7 @@ export default class App extends React.Component {
           time: time,
         })
       }      
-	}
+  }
   render() {
      return (
       <View style={styles.container}>
@@ -97,23 +91,26 @@ export default class App extends React.Component {
             <Text style={styles.header}>TimeSheet</Text>
           </Row>
           <Row style={styles.row}>
-            <Col style={styles.col}>
-              <Button
+            <Col style={styles.colbutton}>
+              <Icon
+                name='play-circle-filled'
+                size={45}
+                color='green'
                 onPress={this.start}
-                title="Start"
-                color="green"
-                accessibilityLabel="Start"
               />
             </Col>
-            <Col style={styles.col}>
-              <Button
-                style={styles.button}
+            <Col style={styles.colbutton}>
+              <Icon
+                name='pause-circle-filled'
+                size={45}
+                color='red'
                 onPress={this.stop}
-                title="Stop"
-                color="red"
-                accessibilityLabel="Stop"
               />
             </Col>
+            <Col><Text style={styles.text_big}>{this.state.currenttime}</Text></Col>
+            <Col><Text style={styles.text_big}>{Formatted.formattedDuration(this.state.time)}</Text></Col>
+          </Row>
+          <Row style={styles.row}>
             <Col>
               <TextInput
                 style={styles.textinput}
@@ -129,14 +126,8 @@ export default class App extends React.Component {
               />
             </Col>
           </Row>
-          <Row style={styles.row}>
-            <Col><Text style={styles.text}>{this.state.currentdate} {this.state.currenttime}</Text></Col>
-            <Col><Text style={styles.text}>{Formatted.formattedDuration(this.state.time)}</Text></Col> 
-            <Col><Text style={styles.text}>{this.state.projectname}</Text></Col>
-            <Col><Text style={styles.text}>{this.state.notes}</Text></Col>              
-          </Row>
           <ScrollView>
-            <TimesheetTable timesheets={this.state.timesheets}/>
+            <TimesheetTable refresh={this.state.refreshing}/>
           </ScrollView>
         </Grid>  
       </View>
@@ -157,8 +148,10 @@ const styles = {
   project_header: { fontSize: 16, fontWeight: 'bold'},
   row: {  height: 60  },
   col: {  width: 60 },
+  colbutton: {  width: 70 },
   coldate: { width: 60},
   coltime: { width: 40},
   text: { textAlign: 'left' },
+  text_big: { textAlign: 'left', fontSize: 25, marginBottom: 0 },
   textinput: {height: 40, paddingLeft: 10, marginLeft: 10 }
 };
